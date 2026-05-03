@@ -20,7 +20,7 @@ app = FastAPI(
 )
 
 # IMPORTANT: register health routes FIRST.
-# The redirect router uses /{code} which would otherwise match /healthz, /readyz.
+# The redirect router uses /{code} which would otherwise match /livez, /readyz.
 app.include_router(health.router)
 app.include_router(redirect.router)
 

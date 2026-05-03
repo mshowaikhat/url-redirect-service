@@ -7,8 +7,8 @@ from app.firestore_client import ping
 router = APIRouter(tags=["health"])
 
 
-@router.get("/healthz")
-async def healthz() -> dict:
+@router.get("/livez")
+async def livez() -> dict:
     """Liveness — process is up. Does NOT check Firestore."""
     return {"status": "ok"}
 
