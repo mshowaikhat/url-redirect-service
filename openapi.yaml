@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: URL Redirect Service
+  description: |
+    Resolves short codes to long URLs and issues HTTP 302 redirects.
+    Increments click_count asynchronously without blocking the redirect.
+    Part of the SWE 455 (Cloud Applications Engineering) URL shortener project.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8081
+    description: Local development
+  - url: https://redirect-m36t54hv3a-uc.a.run.app
+    description: Production (Cloud Run)
+
+paths:
+  /{code}:
+    get:
+      summary: Redirect a short code to its long URL
+      operationId: redirect
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9]{8}$'
+      responses:
+        '302':
+          description: Redirect to the long URL
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: Target long URL
+        '404':
+          description: Short code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /healthz:
+    get:
+      summary: Liveness probe
+      description: Returns 200 if the process is alive. Does NOT check Firestore.
+      operationId: healthz
+      responses:
+        '200':
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /readyz:
+    get:
+      summary: Readiness probe
+      description: Returns 200 only if the service can reach Firestore.
+      operationId: readyz
+      responses:
+        '200':
+          description: Service ready to handle traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        details:
+          type: object
+          additionalProperties: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
