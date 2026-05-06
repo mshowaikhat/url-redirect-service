@@ -6,9 +6,13 @@ caught internally and converted into a cache-miss result. Callers see a simple
 async API where errors and misses are indistinguishable -- so a route handler
 can treat a Redis outage the same as a normal cache miss and fall through to
 Firestore. Redis going down therefore cannot surface as a user-facing failure.
+
+OTel counters (cache.hits / cache.misses) are initialised in Cache.init()
+after the global MeterProvider is configured by setup_observability().
 """
 
 import logging
+from typing import Any
 
 import redis.asyncio as redis_async
 from redis.exceptions import RedisError
@@ -24,13 +28,32 @@ class Cache:
     def __init__(self) -> None:
         self._client: redis_async.Redis | None = None
         self._enabled: bool = False
+        # OTel counters — set in init() after MeterProvider is configured
+        self._hits: Any = None
+        self._misses: Any = None
 
     async def init(self) -> None:
         """
-        Initialize the Redis connection pool and probe with PING.
+        Initialize OTel meters, then the Redis connection pool, then probe with PING.
         Non-fatal: if anything fails the cache is left disabled and the
         service continues running against Firestore alone.
         """
+        # Wire up OTel counters now that the global MeterProvider is configured.
+        try:
+            from opentelemetry import metrics
+
+            meter = metrics.get_meter(__name__)
+            self._hits = meter.create_counter(
+                "cache.hits",
+                description="Number of Redis cache hits",
+            )
+            self._misses = meter.create_counter(
+                "cache.misses",
+                description="Number of Redis cache misses",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("cache metrics init failed: %s", exc)
+
         if not settings.redis_host:
             logger.info("REDIS_HOST not set; cache disabled")
             return
@@ -65,9 +88,11 @@ class Cache:
         try:
             value = await self._client.get(code)
             if value:
-                logger.info("cache_hit code=%s", code)
+                if self._hits is not None:
+                    self._hits.add(1, {"code": code})
                 return value
-            logger.info("cache_miss code=%s", code)
+            if self._misses is not None:
+                self._misses.add(1, {"code": code})
             return None
         except (RedisError, OSError) as e:
             logger.warning("cache get failed code=%s err=%s", code, e)

@@ -7,18 +7,35 @@ from fastapi import FastAPI
 
 from app.cache import cache
 from app.config import settings
+from app.logging_config import setup_logging
 from app.routes import health, redirect
+from app.tracing import setup_observability
 
-logging.basicConfig(
+# Configure JSON logging before any module emits a log record.
+setup_logging(
+    service=settings.otel_service_name,
+    project_id=settings.gcp_project_id,
     level=settings.log_level,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown hooks (replaces deprecated @app.on_event)."""
+    """Startup and shutdown hooks."""
+    # OTel providers must be configured before cache.init() creates meters.
+    setup_observability(settings.otel_service_name, settings.gcp_project_id)
+
+    # Auto-instrument FastAPI; relies on TracerProvider being set above.
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+        FastAPIInstrumentor.instrument_app(app)
+        logger.info("FastAPI OTel instrumentation active")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("FastAPI instrumentation skipped: %s", exc)
+
     logger.info(
         "redirect starting: project=%s collection=%s emulator=%s",
         settings.gcp_project_id,

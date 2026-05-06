@@ -5,3 +5,13 @@ pydantic==2.9.2
 pydantic-settings==2.6.0
 python-dotenv==1.0.1
 redis>=5.0,<6
+
+# Structured JSON logging (Cloud Logging-compatible)
+python-json-logger==2.0.7
+
+# OpenTelemetry: tracing + metrics with GCP exporters
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-exporter-gcp-trace>=1.6.0
+opentelemetry-propagator-gcp>=1.6.0
+opentelemetry-exporter-gcp-monitoring>=1.6.0
