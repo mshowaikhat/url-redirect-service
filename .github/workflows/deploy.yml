@@ -35,9 +35,30 @@ jobs:
       - name: Ruff check
         run: ruff check app/
 
+  test:
+    name: Test
+    needs: lint
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: test-project-id
+      FIRESTORE_COLLECTION: urls
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -v
+
   build-and-deploy:
     name: Build and Deploy
-    needs: lint
+    needs: [lint, test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
