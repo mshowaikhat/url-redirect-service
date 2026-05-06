@@ -14,16 +14,26 @@ services:
       retries: 10
       start_period: 5s
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   redirect:
     build: .
     depends_on:
       firestore-emulator:
         condition: service_healthy
+      redis:
+        condition: service_started
     environment:
       GCP_PROJECT_ID: swe455-urlshortener-252
       FIRESTORE_COLLECTION: urls
       LOG_LEVEL: INFO
       PORT: "8080"
       FIRESTORE_EMULATOR_HOST: firestore-emulator:8200
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_AUTH: ""
     ports:
       - "8081:8080"   # Host 8081, container 8080 — avoids clashing with shortener

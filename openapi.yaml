@@ -57,17 +57,29 @@ paths:
   /readyz:
     get:
       summary: Readiness probe
-      description: Returns 200 only if the service can reach Firestore.
+      description: |
+        Reports the state of the service's backing services.
+
+        - Firestore is required: if it is unreachable the response is 503.
+        - Redis is best-effort: if it is unreachable the response is 200
+          with status=degraded. The redirect path still works (it falls
+          back to Firestore on every lookup) but cache hits are not
+          available, so latency may be higher.
+
+        The `details` object always includes per-backend status keys
+        (`firestore`, `redis`) with values `"ok"` or `"unreachable"`.
       operationId: readyz
       responses:
         '200':
-          description: Service ready to handle traffic
+          description: |
+            Service ready. status is `"ok"` when all backends are healthy
+            and `"degraded"` when only the cache is unreachable.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
         '503':
-          description: Service not ready
+          description: Firestore is unreachable; service cannot serve traffic.
           content:
             application/json:
               schema:

@@ -18,7 +18,13 @@ class Settings(BaseSettings):
         None, alias="FIRESTORE_EMULATOR_HOST"
     )
 
-    # B will add: REDIS_HOST, REDIS_PORT, REDIS_AUTH
+    # Redis cache (Memorystore in prod, redis:7-alpine in docker-compose).
+    # When redis_host is unset the cache is disabled and every lookup goes
+    # straight to Firestore -- useful for local dev without docker.
+    redis_host: str | None = Field(None, alias="REDIS_HOST")
+    redis_port: int = Field(6379, alias="REDIS_PORT")
+    redis_auth: str | None = Field(None, alias="REDIS_AUTH")
+    cache_ttl_seconds: int = Field(3600, alias="CACHE_TTL_SECONDS")
 
     model_config = SettingsConfigDict(
         env_file=".env",
