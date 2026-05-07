@@ -82,7 +82,7 @@ All config in `app/config.py`. Required env vars:
 
 Cache-related env vars (already wired by Terraform, ready for app code to consume):
 
-- `REDIS_HOST` — Memorystore host IP (currently 10.96.122.171)
+- `REDIS_HOST` — Memorystore host IP (private VPC address; injected via Terraform)
 - `REDIS_PORT` — 6379
 - `REDIS_AUTH` — auth string, mounted from Secret Manager `redis-auth-string`
 
